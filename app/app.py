@@ -53,23 +53,31 @@ app.layout = html.Div(
                 "borderRadius": "8px",
                 "boxShadow": "0 4px 8px rgba(0, 0, 0, 0.1)"
             }
-        )
+        ),    
+        dcc.Interval(
+            id='interval-component',
+            interval=10 * 1000, 
+            n_intervals=0 
+    )
     ]
 )
 
-@callback(
+@app.callback(
     Output('graph-content', 'figure'),
-    Input('dropdown-selection', 'value')
+    [Input('dropdown-selection', 'value'),
+     Input('interval-component', 'n_intervals')]
 )
-def update_graph(value):
+def update_graph(value, n_intervals):
     df = GetData()
     dff = df[df.PARTITION == value].iloc[0]
+
+    # Create a pie chart
     fig = px.pie(
         values=[dff['CPUS_A'], dff['CPUS_I'], dff['CPUS_O']],
         title=f"CPU Distribution for {value} Partition",
         names=['Allocated', 'Free to Use', 'Other'],
         hole=.4,
-        color_discrete_sequence=['#FF7F3E', '#80C4E9', '#4335A7'] 
+        color_discrete_sequence=['#FF7F3E', '#80C4E9', '#4335A7']
     )
     fig.update_layout(
         title=dict(font=dict(size=20), x=0.5, xanchor='center'),
