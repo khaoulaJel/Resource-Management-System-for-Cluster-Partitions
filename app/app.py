@@ -1,10 +1,10 @@
 from dash import Dash, html, dcc, callback, Output, Input
 import plotly.express as px
-import pandas as pd
-
-df = pd.read_csv('sinfo_output.csv')
+from DataFetch import GetData 
 
 app = Dash()
+
+DropDownVals = GetData().PARTITION.unique()
 
 app.layout = html.Div(
     style={
@@ -33,7 +33,7 @@ app.layout = html.Div(
             children=[
                 html.Label("Select Partition:", style={"fontWeight": "bold", "fontSize": "16px", "marginDown": "10px"}),
                 dcc.Dropdown(
-                    df.PARTITION.unique(),
+                    DropDownVals,
                     'defq*',
                     id='dropdown-selection',
                     style={
@@ -62,6 +62,7 @@ app.layout = html.Div(
     Input('dropdown-selection', 'value')
 )
 def update_graph(value):
+    df = GetData()
     dff = df[df.PARTITION == value].iloc[0]
     fig = px.pie(
         values=[dff['CPUS_A'], dff['CPUS_I'], dff['CPUS_O']],

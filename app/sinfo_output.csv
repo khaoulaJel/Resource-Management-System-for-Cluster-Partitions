@@ -1,7 +1,0 @@
-PARTITION,CPUS_A,CPUS_I,CPUS_O,CPUS_T
-defq*,40,216,44,300
-gpu,0,440,88,528
-shortq,40,216,44,300
-longq,40,216,44,300
-visu,0,44,0,44
-special,40,612,88,740
