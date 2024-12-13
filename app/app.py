@@ -17,7 +17,6 @@ app.layout = html.Div(
             children='Simlab Resource Usage',
             style={
                 'textAlign': 'center',
-                'color': '#fffff',
                 'padding': '10px',
                 'backgroundColor': '#78B3CE',
                 'borderRadius': '3px',
@@ -31,10 +30,10 @@ app.layout = html.Div(
                 "textAlign": "center"
             },
             children=[
-                html.Label("Select Partition:", style={"fontWeight": "bold", "fontSize": "16px", "marginDown": "10px"}),
+                html.Label("Select Partition:", style={"fontWeight": "bold", "fontSize": "16px", "marginBottom": "10px"}),
                 dcc.Dropdown(
                     DropDownVals,
-                    'defq*',
+                    DropDownVals[0] if len(DropDownVals) > 0 else None,  # Default to the first value if available
                     id='dropdown-selection',
                     style={
                         "width": "100%",
@@ -66,18 +65,17 @@ app.layout = html.Div(
                 "borderRadius": "8px",
                 "boxShadow": "0 4px 8px rgba(0, 0, 0, 0.1)"
             }
-        ),    
+        ),
         dcc.Interval(
             id='interval-component',
-            interval=10 * 1000, 
-            n_intervals=0 
+            interval=10 * 1000,  # Update every 10 seconds
+            n_intervals=0
         ),
         dcc.Interval(
             id='interval-component2',
-            interval=10 * 1000, 
-            n_intervals=1 
+            interval=10 * 1000,  # Update every 10 seconds
+            n_intervals=0
         )
-        
     ]
 )
 
@@ -89,6 +87,9 @@ app.layout = html.Div(
 )
 def update_graph(value, n_intervals):
     df = GetData()
+    if value is None or value not in df.PARTITION.values:
+        return px.pie(title="No Data Available")
+    
     dff = df[df.PARTITION == value].iloc[0]
 
     fig = px.pie(
@@ -115,19 +116,21 @@ def update_graph(value, n_intervals):
 
 @app.callback(
     Output('gpu-count', 'children'),
-    Input('interval-component2', 'n_intervals')
+    [Input('dropdown-selection', 'value'),
+     Input('interval-component2', 'n_intervals')]
 )
-def update_gpu_count(value,n_intervals):
+def update_gpu_count(value, n_intervals):
     df = GetData()
+    if value is None or value not in df.PARTITION.values:
+        return "No Data Available"
+    
     dff = df[df.PARTITION == value].iloc[0]
-
-
     gpu_count = GetGPU()
-    s1= f"Total Available CPUS : {dff['CPU_I']}"
-    s2= f"Total GPUs (Idle): {gpu_count}"
 
-    return s1+s2
+    s1 = f"Total Available CPUs: {dff['CPUS_I']}"
+    s2 = f" | Total GPUs (Idle): {gpu_count}"
 
+    return s1 + s2
 
 
 if __name__ == '__main__':
