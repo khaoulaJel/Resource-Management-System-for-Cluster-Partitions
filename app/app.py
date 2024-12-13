@@ -1,6 +1,6 @@
 from dash import Dash, html, dcc, callback, Output, Input
 import plotly.express as px
-from DataFetch import GetData 
+from DataFetch import GetData, GetGPU
 
 app = Dash()
 
@@ -45,6 +45,19 @@ app.layout = html.Div(
                 ),
             ]
         ),
+        html.Div(
+            id="gpu-count",
+            style={
+                "textAlign": "center",
+                "fontSize": "20px",
+                "color": "#333",
+                "marginTop": "20px",
+                "backgroundColor": "#F4F4F9",
+                "padding": "10px",
+                "borderRadius": "5px",
+                "boxShadow": "0 2px 4px rgba(0, 0, 0, 0.1)"
+            },
+        ),
         dcc.Graph(
             id='graph-content',
             style={
@@ -58,9 +71,16 @@ app.layout = html.Div(
             id='interval-component',
             interval=10 * 1000, 
             n_intervals=0 
-    )
+        ),
+        dcc.Interval(
+            id='interval-component2',
+            interval=10 * 1000, 
+            n_intervals=1 
+        )
+        
     ]
 )
+
 
 @app.callback(
     Output('graph-content', 'figure'),
@@ -71,7 +91,6 @@ def update_graph(value, n_intervals):
     df = GetData()
     dff = df[df.PARTITION == value].iloc[0]
 
-    # Create a pie chart
     fig = px.pie(
         values=[dff['CPUS_A'], dff['CPUS_I'], dff['CPUS_O']],
         title=f"CPU Distribution for {value} Partition",
@@ -92,6 +111,24 @@ def update_graph(value, n_intervals):
         paper_bgcolor="#f4f4f9"
     )
     return fig
+
+
+@app.callback(
+    Output('gpu-count', 'children'),
+    Input('interval-component2', 'n_intervals')
+)
+def update_gpu_count(value,n_intervals):
+    df = GetData()
+    dff = df[df.PARTITION == value].iloc[0]
+
+
+    gpu_count = GetGPU()
+    s1= f"Total Available CPUS : {dff['CPU_I']}"
+    s2= f"Total GPUs (Idle): {gpu_count}"
+
+    return s1+s2
+
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8050, debug=True)
