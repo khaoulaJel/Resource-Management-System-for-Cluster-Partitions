@@ -57,28 +57,27 @@ def get_gpu_nodes():
 
 
 def write_output_to_csv(output_file="gpu_availability.csv"):
-    # Step 1: Get partition -> allocated nodes from squeue
+
     allocated_nodes = get_allocated_nodes()
 
-    # Step 2: Get partition -> gpu nodes from sinfo
+
     gpu_nodes = get_gpu_nodes()
 
-    # Step 3: Prepare data for CSV
     csv_rows = [["Partition", "Available GPU Nodes", "Available GPU Count"]]  # Header row
 
     print("Partition - Available GPU Nodes:")
     for partition, gpu_node_set in gpu_nodes.items():
-        # Allocated set might not have this partition, default to empty set
+
         allocated_set = allocated_nodes.get(partition, set())
-        # Find nodes that have GPU but are NOT allocated
+
         available_nodes = gpu_node_set - allocated_set
-        # Print partition and the available nodes
+
         print(f"{partition}: {available_nodes}")
         print(f"{partition} Available GPU Count: {len(available_nodes)}")
-        # Append partition data to CSV rows
+ 
         csv_rows.append([partition, ", ".join(available_nodes), len(available_nodes)])
 
-    # Write rows to CSV file
+
     with open(output_file, mode="w", newline="") as csvfile:
         csv_writer = csv.writer(csvfile)
         csv_writer.writerows(csv_rows)

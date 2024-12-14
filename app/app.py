@@ -1,9 +1,8 @@
 from dash import Dash, html, dcc, callback, Output, Input
 import plotly.express as px
 import pandas as pd
-from DataFetch import GetData  # Retain CPU data fetching functionality
+from DataFetch import GetData  
 
-# Load GPU availability data from CSV
 def load_gpu_data():
     try:
         df = pd.read_csv("C:\\Users\\ZBooK\\Desktop\\Resource-Management-System-for-Cluster-Partitions\\app\\gpu_availability.csv")
@@ -14,14 +13,14 @@ def load_gpu_data():
         print(f"Error loading GPU data: {e}")
         return pd.DataFrame(columns=["Partition", "Available GPU Nodes", "Available GPU Count"])
 
-# Initialize Dash app
+
 app = Dash()
 
-# Load GPU and CPU data
+
 gpu_data = load_gpu_data()
 cpu_data = GetData()
 
-# Dropdown values based on partitions
+
 DropDownVals = gpu_data["Partition"].unique()
 
 app.layout = html.Div(
@@ -99,24 +98,23 @@ app.layout = html.Div(
      Input('interval-component', 'n_intervals')]
 )
 def update_graph(value, n_intervals):
-    # Reload CPU and GPU data
+
     gpu_df = load_gpu_data()
     cpu_df = GetData()
 
     if value is None or value not in gpu_df["Partition"].values:
         return px.pie(title="No Data Available")
 
-    # Get GPU and CPU data for the selected partition
+ 
     gpu_dff = gpu_df[gpu_df["Partition"] == value].iloc[0]
     cpu_dff = cpu_df[cpu_df["PARTITION"] == value].iloc[0]
 
-    # Create pie chart combining CPU and GPU information
     fig = px.pie(
         values=[
-            cpu_dff["CPUS_A"],  # Allocated CPUs
-            cpu_dff["CPUS_I"],  # Idle CPUs
-            cpu_dff["CPUS_O"],  # Other CPUs
-            gpu_dff["Available GPU Count"]  # GPUs Available
+            cpu_dff["CPUS_A"],  
+            cpu_dff["CPUS_I"],  
+            cpu_dff["CPUS_O"],  
+            gpu_dff["Available GPU Count"]  
         ],
         title=f"Resource Distribution for {value} Partition",
         names=['Allocated CPUs', 'Idle CPUs', 'Other CPUs', 'Available GPUs'],
@@ -149,17 +147,16 @@ def update_resource_info(value, n_intervals):
     if value is None or value not in gpu_df["Partition"].values:
         return "No Data Available"
 
-    # Get GPU and CPU data for the selected partition
     gpu_dff = gpu_df[gpu_df["Partition"] == value].iloc[0]
     cpu_dff = cpu_df[cpu_df["PARTITION"] == value].iloc[0]
 
-    # Display CPU and GPU availability
+
     total_cpus = cpu_dff['CPUS_T']
     idle_cpus = cpu_dff['CPUS_I']
     gpu_count = gpu_dff["Available GPU Count"]
     gpu_nodes = gpu_dff["Available GPU Nodes"]
 
-    # Return formatted info
+
     return html.Div([
         html.Div(
             f"Total CPUs: {total_cpus}",
