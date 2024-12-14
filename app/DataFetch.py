@@ -3,7 +3,6 @@ import csv
 import pandas as pd
 
 sinfo_command_CPU = 'sinfo --noheader --format="%P,%C" | awk -F\'[,/]{1}\' \'{print $1","$2","$3","$4","$5}\''
-sinfo_command_GPU = "sinfo -p gpu --states=idle --noheader -o '%n %G' | awk '{split($2, gpus, \\\":\\\"); print $1, gpus[2]}' | awk '{s+=$2} END {print s}'"
 
 
 
@@ -23,14 +22,3 @@ def GetData():
         df[col] = pd.to_numeric(df[col])
 
     return df
-
-
-
-def GetGPU():
-    ssh_command = f'ssh simlab "{sinfo_command_GPU}"'
-
-    result = subprocess.run(ssh_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    output = result.stdout.strip()
-
-    return int(output)
-
