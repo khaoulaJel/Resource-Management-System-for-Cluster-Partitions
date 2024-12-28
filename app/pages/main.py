@@ -1,3 +1,10 @@
+
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+
 from dash import dcc, html, Input, Output, State, callback, no_update  
 from flask import session
 from modules.User import User
@@ -164,13 +171,19 @@ def updateResourceInfo(value, nIntervals):
 
     totalCpus = cpuDff["CPUS_T"]
     idleCpus = cpuDff["CPUS_I"]
-    gpuCount = gpuDff["Available GPU Count"]
-    gpuNodes = gpuDff["Available GPU Nodes"]
+    
+    div_content = [
+        html.Div(f"Total CPUs: {totalCpus}", style={"fontWeight": "bold", "marginBottom": "5px"}),
+        html.Div(f"Idle CPUs: {idleCpus}", style={"fontWeight": "bold", "marginBottom": "5px"}),
+    ]
 
-    return html.Div(
-        [
-            html.Div(f"Total CPUs: {totalCpus}", style={"fontWeight": "bold", "marginBottom": "5px"}),
-            html.Div(f"Idle CPUs: {idleCpus}", style={"fontWeight": "bold", "marginBottom": "5px"}),
+    if value == "gpu":
+        gpuDff = gpuData[gpuData["Partition"] == value].iloc[0]
+
+        gpuCount = gpuDff["Available GPU Count"]
+        gpuNodes = gpuDff["Available GPU Nodes"]
+
+        div_content.extend([
             html.Div(
                 f"Total GPUs Available: {gpuCount}",
                 style={"fontWeight": "bold", "marginBottom": "5px", "color": "#4CAF50"},
@@ -179,8 +192,10 @@ def updateResourceInfo(value, nIntervals):
                 f"Available GPU Nodes: {gpuNodes}",
                 style={"fontWeight": "bold", "marginBottom": "5px", "color": "#007ACC"},
             ),
-        ]
-    )
+        ])
+
+        return html.Div(div_content)
+
 
 
 @callback(
