@@ -42,16 +42,59 @@ class DataFetcher:
 
     def getGPUData(self):
         """
-        Fetch and process GPU data with separate commands for better reliability.
+        Fetch GPU data in a single SSH command.
         """
-
         try:
-            allocated_nodes = self.get_allocated_nodes()  # Allocated nodes in the 'gpu' partition
-            gpu_nodes = self.get_gpu_nodes()  # All GPU nodes in the 'gpu' partition
-            other_partition_nodes = self.get_other_partition_allocations()  # Nodes allocated by other partitions
+            combined_command = (
+                'sinfo --noheader -p gpu -o "%n %G" && squeue -t RUNNING -o "%P %N"'
+            )
+            result, err = executeSSH(self.data.username, self.data.password, combined_command)
 
+            if err:
+                raise ValueError(f"Error executing SSH command: {err}")
+
+            if not result:
+                raise ValueError("No output from GPU data command")
+
+            # Split sinfo and squeue results
+            sinfo_lines = []
+            squeue_lines = []
+            gpu_section = True
+
+            for line in result.splitlines():
+                if line.startswith("PARTITION"):  # Start of squeue output
+                    gpu_section = False
+                    continue
+                if gpu_section:
+                    sinfo_lines.append(line)
+                else:
+                    squeue_lines.append(line)
+
+            # Extract GPU nodes from sinfo output
+            gpu_nodes = set()
+            for line in sinfo_lines:
+                parts = line.split()
+                if len(parts) == 2 and "gpu:" in parts[1]:
+                    node = parts[0]
+                    gpu_nodes.add(node)
+
+            # Extract allocated nodes from squeue output
+            allocated_nodes = set()
+            other_partition_nodes = set()
+            for line in squeue_lines:
+                parts = line.split()
+                if len(parts) >= 2:
+                    partition = parts[0]
+                    node = parts[1]
+                    if partition == "gpu":
+                        allocated_nodes.add(node)
+                    else:
+                        other_partition_nodes.add(node)
+
+            # Compute available GPU nodes
             available_nodes = gpu_nodes - allocated_nodes - other_partition_nodes
 
+            # Create DataFrame
             data = {
                 "Partition": ["gpu"] * len(available_nodes),
                 "Available GPU Nodes": list(available_nodes),
@@ -59,81 +102,7 @@ class DataFetcher:
             }
 
             return pd.DataFrame(data)
+
         except Exception as e:
             print(f"Error fetching GPU data: {e}")
             return pd.DataFrame()
-
-    def get_allocated_nodes(self):
-        """
-        Fetch nodes that are currently running GPU jobs using squeue.
-        Focus only on the 'gpu' partition.
-        """
-        squeue_cmd = 'squeue -t RUNNING -o "%P %N" | grep "^gpu"'
-        try:
-            result, err = executeSSH(self.data.username, self.data.password, squeue_cmd)
-
-            if err:
-                raise ValueError(f"Error executing SSH command: {err}")
-
-            allocated_nodes = set()
-
-            for line in result.splitlines():
-                parts = line.split()
-                if len(parts) >= 2:
-                    node = parts[1]  # Extract the node name
-                    allocated_nodes.add(node)
-
-            return allocated_nodes
-        except Exception as e:
-            print(f"Error in get_allocated_nodes: {e}")
-            return set()
-
-    def get_gpu_nodes(self):
-        """
-        Fetch all nodes in the 'gpu' partition that have GPUs using sinfo.
-        """
-        sinfo_cmd = 'sinfo --noheader -p gpu -o "%n %G"'
-        try:
-            result, err = executeSSH(self.data.username, self.data.password, sinfo_cmd)
-
-            if err:
-                raise ValueError(f"Error executing SSH command: {err}")
-
-            gpu_nodes = set()
-
-            for line in result.splitlines():
-                parts = line.split()
-                if len(parts) == 2 and "gpu:" in parts[1]:
-                    node = parts[0]  # Extract node name
-                    gpu_nodes.add(node)
-
-            return gpu_nodes
-        except Exception as e:
-            print(f"Error in get_gpu_nodes: {e}")
-            return set()
-
-    def get_other_partition_allocations(self):
-        """
-        Fetch nodes allocated by partitions other than 'gpu'.
-        """
-        squeue_cmd = 'squeue -t RUNNING -o "%P %N"'
-        try:
-            result, err = executeSSH(self.data.username, self.data.password, squeue_cmd)
-
-            if err:
-                raise ValueError(f"Error executing SSH command: {err}")
-
-            non_gpu_allocated_nodes = set()
-
-            for line in result.splitlines():
-                parts = line.split()
-                if len(parts) >= 2:
-                    partition = parts[0]
-                    node = parts[1]
-                    if partition != "gpu":  # Exclude 'gpu' partition
-                        non_gpu_allocated_nodes.add(node)
-
-            return non_gpu_allocated_nodes
-        except Exception as e:
-            print(f"Error in get_other_partition_allocations: {e}")
-            return set()
