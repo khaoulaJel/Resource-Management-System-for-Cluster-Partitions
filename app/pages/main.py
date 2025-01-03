@@ -3,7 +3,7 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from dash import dcc, html, Input, Output, State, callback, no_update
+from dash import dcc, html, Input, Output, callback
 from flask import session
 from modules.User import User
 import plotly.express as px
@@ -29,7 +29,7 @@ layout = html.Div(
     children=[
         dcc.Interval(
             id="update-interval",
-            interval=10 * 1000,  
+            interval=2 * 1000,  
             n_intervals=0
         ),
         html.Div(

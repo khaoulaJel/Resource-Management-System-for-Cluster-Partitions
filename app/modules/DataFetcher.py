@@ -1,20 +1,19 @@
 from collections import defaultdict
 import pandas as pd
 from modules.Commander import executeSSH
-
+import subprocess
 
 class DataFetcher:
     CPUCommand = 'sinfo --noheader --format="%P,%C" | awk -F\'[,/]{1}\' \'{print $1","$2","$3","$4","$5}\''
-    GPUCommand = '''
-        sinfo --noheader -p gpu -o "%n %G";
-        squeue -t RUNNING -o "%P %N" | grep "^gpu"
-    '''
+    GPUCommand = 'sinfo --noheader -p gpu -o "%n %G" && squeue -t RUNNING -o "%P %N"'
 
     def __init__(self, user):
         self.data = user 
 
     def getCPUData(self):
-
+        """
+        Fetch and process CPU data.
+        """
         try:
             output, err = executeSSH(self.data.username, self.data.password, self.CPUCommand)
 
@@ -41,43 +40,88 @@ class DataFetcher:
     
 
     def getGPUData(self):
-        try:
-            output, err = executeSSH(self.data.username, self.data.password, self.GPUCommand)
-            if err:
-                raise ValueError(f"Error executing SSH command: {err}")
+        """
+        Fetch and process GPU data with separate commands for better reliability.
+        """
 
-            gpu_nodes, allocated_nodes = self._parse_combined_gpu_output(output)
-            available_nodes = gpu_nodes - allocated_nodes
+        allocated_nodes = self.get_allocated_nodes()  # Allocated nodes in the 'gpu' partition
+        gpu_nodes = self.get_gpu_nodes()  # All GPU nodes in the 'gpu' partition
+        other_partition_nodes = self.get_other_partition_allocations()  # Nodes allocated by other partitions
 
-            data = {
-                "Partition": ["gpu"] * len(available_nodes),
-                "Available GPU Nodes": list(available_nodes),
-                "Available GPU Count": [len(available_nodes)] * len(available_nodes),
-            }
-
-            return pd.DataFrame(data)
-        except Exception as e:
-            print(f"Error retrieving GPU data: {e}")
-            return pd.DataFrame(columns=["Partition", "Available GPU Nodes", "Available GPU Count"])
+        available_nodes = gpu_nodes - allocated_nodes - other_partition_nodes
 
 
-    def _parse_combined_gpu_output(self, output):
-        try:
-            lines = output.splitlines()
-            gpu_nodes = set()
-            allocated_nodes = set()
+        data = {
+            "Partition": ["gpu"] * len(available_nodes),
+            "Available GPU Nodes": list(available_nodes),
+            "Available GPU Count": [1] * len(available_nodes),
+        }
 
-            for line in lines:
-                if "gpu:" in line:  # sinfo output
-                    parts = line.split()
-                    if len(parts) == 2:
-                        gpu_nodes.add(parts[0])
-                elif line.startswith("gpu"):  # squeue output
-                    parts = line.split()
-                    if len(parts) >= 2:
-                        allocated_nodes.add(parts[1])
+        print(data)
 
-            return gpu_nodes, allocated_nodes
-        except Exception as e:
-            print(f"Error parsing GPU output: {e}")
-            return set(), set()
+        return pd.DataFrame(data)
+
+
+    def get_allocated_nodes(self):
+        """
+        Fetch nodes that are currently running GPU jobs using squeue.
+        Focus only on the 'gpu' partition.
+        """
+        squeue_cmd = 'squeue -t RUNNING -o "%P %N" | grep "^gpu"'
+        result, err = executeSSH(self.data.username, self.data.password, squeue_cmd)
+
+        allocated_nodes = set()
+        if result.returncode != 0 or not result.stdout.strip():
+            print("Error retrieving allocated GPU nodes.")
+            return allocated_nodes
+
+        for line in result.stdout.strip().splitlines():
+            parts = line.split()
+            if len(parts) >= 2:
+                node = parts[1]  # Extract the node name
+                allocated_nodes.add(node)
+
+        return allocated_nodes
+
+
+    def get_gpu_nodes(self):
+        """
+        Fetch all nodes in the 'gpu' partition that have GPUs using sinfo.
+        """
+        sinfo_cmd = 'sinfo --noheader -p gpu -o "%n %G"'
+        result, err = executeSSH(self.data.username, self.data.password, sinfo_cmd)
+
+        gpu_nodes = set()
+        if result.returncode != 0 or not result.stdout.strip():
+            print("Error retrieving GPU nodes.")
+            return gpu_nodes
+
+        for line in result.stdout.strip().splitlines():
+            parts = line.split()
+            if len(parts) == 2 and "gpu:" in parts[1]:
+                node = parts[0]  # Extract node name
+                gpu_nodes.add(node)
+
+        return gpu_nodes
+
+    def get_other_partition_allocations(self):
+        """
+        Fetch nodes allocated by partitions other than 'gpu'.
+        """
+        squeue_cmd = 'squeue -t RUNNING -o "%P %N"'
+        result, err = executeSSH(self.data.username, self.data.password, squeue_cmd)
+
+        non_gpu_allocated_nodes = set()
+        if result.returncode != 0 or not result.stdout.strip():
+            print("Error retrieving allocated nodes from other partitions.")
+            return non_gpu_allocated_nodes
+
+        for line in result.stdout.strip().splitlines():
+            parts = line.split()
+            if len(parts) >= 2:
+                partition = parts[0]
+                node = parts[1]
+                if partition != "gpu":  # Exclude 'gpu' partition
+                    non_gpu_allocated_nodes.add(node)
+
+        return non_gpu_allocated_nodes
