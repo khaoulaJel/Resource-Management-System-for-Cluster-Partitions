@@ -1,11 +1,9 @@
-
 import sys
 import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-
-from dash import dcc, html, Input, Output, State, callback, no_update  
+from dash import dcc, html, Input, Output, State, callback, no_update
 from flask import session
 from modules.User import User
 import plotly.express as px
@@ -119,34 +117,27 @@ layout = html.Div(
                 "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.3)",
             },
         ),
-        dcc.Interval(
-            id="interval-component",
-            interval=10 * 1000,  
-            n_intervals=0,
-        ),
     ],
 )
 
 # Callbacks
 @callback(
     Output("graph-content", "figure"),
-    [Input("dropdown-selection", "value"), Input("interval-component", "n_intervals")],
+    [Input("dropdown-selection", "value")],
 )
-def updateGraph(value, nIntervals):
+def updateGraph(value):
     user = getLoggedUser()
-    gpuData = user.dataFetcher.getGPUData()
     cpuData = user.dataFetcher.getCPUData()
 
     if value is None:
         return px.pie(title="No Data Available")
 
-    gpuDff = gpuData[gpuData["Partition"] == value].iloc[0]
     cpuDff = cpuData[cpuData["PARTITION"] == value].iloc[0]
 
     fig = px.pie(
-        values=[cpuDff["CPUS_A"], cpuDff["CPUS_I"], cpuDff["CPUS_O"], gpuDff["Available GPU Count"]],
+        values=[cpuDff["CPUS_A"], cpuDff["CPUS_I"], cpuDff["CPUS_O"]],
         title=f"Resource Distribution for {value} Partition",
-        names=["Allocated CPUs", "Idle CPUs", "Other CPUs", "Available GPUs"],
+        names=["Allocated CPUs", "Idle CPUs", "Other CPUs"],
         hole=0.4,
         color_discrete_sequence=["#FF7F3E", "#80C4E9", "#4335A7", "#4CAF50"],
     )
@@ -155,10 +146,9 @@ def updateGraph(value, nIntervals):
 
 @callback(
     Output("resource-info", "children"),
-    [Input("dropdown-selection", "value"), Input("interval-component", "n_intervals")],
+    [Input("dropdown-selection", "value")],
 )
-def updateResourceInfo(value, nIntervals):
-
+def updateResourceInfo(value):
     user = getLoggedUser()
     gpuData = user.dataFetcher.getGPUData()
     cpuData = user.dataFetcher.getCPUData()
@@ -166,7 +156,6 @@ def updateResourceInfo(value, nIntervals):
     if value is None or value not in gpuData["Partition"].values:
         return "No Data Available"
 
-    gpuDff = gpuData[gpuData["Partition"] == value].iloc[0]
     cpuDff = cpuData[cpuData["PARTITION"] == value].iloc[0]
 
     totalCpus = cpuDff["CPUS_T"]
@@ -194,15 +183,14 @@ def updateResourceInfo(value, nIntervals):
             ),
         ])
 
-        return html.Div(div_content)
-
+    return html.Div(div_content)
 
 
 @callback(
     Output("user-greeting", "children"),
-    Input("interval-component", "n_intervals"),
+    Input("dropdown-selection", "value"),
 )
-def updateGreeting(nIntervals):
+def updateGreeting(value):
     user = getLoggedUser()
     return f"Hello, {user.username}"
 
@@ -213,4 +201,4 @@ def updateGreeting(nIntervals):
 )
 def handleLogout(nClicks):
     session.pop("User", None)
-    session["logged_in"] = False 
+    session["logged_in"] = False
