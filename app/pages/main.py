@@ -134,7 +134,6 @@ layout = html.Div(
     ],
 )
 def updateGraph(value, n_intervals):
-    print(value)
     user = getLoggedUser()
     cpuData = user.dataFetcher.getCPUData()
 
@@ -162,7 +161,6 @@ def updateGraph(value, n_intervals):
 )
 def updateResourceInfo(value, n_intervals):
     user = getLoggedUser()
-
     if value == "gpu":
         gpuData = user.dataFetcher.getGPUData()
         if gpuData.empty:
@@ -197,7 +195,7 @@ def updateResourceInfo(value, n_intervals):
 )
 def updateGreeting(value):
     user = getLoggedUser()
-    return f"Hello, {user.username}"
+    return f"Hello, {' '.join(user.username.split('.'))}!"
 
 
 @callback(
