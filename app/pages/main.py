@@ -161,6 +161,13 @@ def updateGraph(value, n_intervals):
 )
 def updateResourceInfo(value, n_intervals):
     user = getLoggedUser()
+    cpuData = user.dataFetcher.getCPUData()
+
+    if cpuData.empty or value not in cpuData["PARTITION"].values:
+        return "No Data Available"
+
+    cpuDff = cpuData[cpuData["PARTITION"] == value].iloc[0]
+
     if value == "gpu":
         gpuData = user.dataFetcher.getGPUData()
         if gpuData.empty:
@@ -172,21 +179,20 @@ def updateResourceInfo(value, n_intervals):
         availableGpuNodesStr = ", ".join(availableGpuNodes) if availableGpuNodes else "None"
 
         return html.Div([
+            html.Div(f"Total CPUs: {cpuDff['CPUS_T']}", style={"fontWeight": "bold", "marginBottom": "5px"}),
+            html.Div(f"Idle CPUs: {cpuDff['CPUS_I']}", style={"fontWeight": "bold", "marginBottom": "5px"}),
             html.Div(f"Total GPUs Available: {totalGpuCount}", style={"fontWeight": "bold", "marginBottom": "5px", "color": "#4CAF50"}),
             html.Div(f"Available GPU Nodes: {availableGpuNodesStr}", style={"fontWeight": "bold", "marginBottom": "5px", "color": "#007ACC"})
         ])
-
-
-    cpuData = user.dataFetcher.getCPUData()
-    if cpuData.empty or value not in cpuData["PARTITION"].values:
-        return "No Data Available"
-
-    cpuDff = cpuData[cpuData["PARTITION"] == value].iloc[0]
-
+    
     return html.Div([
         html.Div(f"Total CPUs: {cpuDff['CPUS_T']}", style={"fontWeight": "bold", "marginBottom": "5px"}),
         html.Div(f"Idle CPUs: {cpuDff['CPUS_I']}", style={"fontWeight": "bold", "marginBottom": "5px"}),
     ])
+
+
+
+
 
 
 @callback(
