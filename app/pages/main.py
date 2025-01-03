@@ -10,6 +10,7 @@ import plotly.express as px
 import pandas as pd
 
 def getLoggedUser():
+    """Retrieve the logged-in user from the session."""
     loggedUser = session.get("User")
     if not loggedUser:
         raise ValueError("User session data is missing.")
@@ -26,6 +27,11 @@ layout = html.Div(
         "color": "white"
     },
     children=[
+        dcc.Interval(
+            id="update-interval",
+            interval=10 * 1000,  
+            n_intervals=0
+        ),
         html.Div(
             style={
                 "display": "flex",
@@ -120,12 +126,14 @@ layout = html.Div(
     ],
 )
 
-# Callbacks
 @callback(
     Output("graph-content", "figure"),
-    [Input("dropdown-selection", "value")],
+    [
+        Input("dropdown-selection", "value"),
+        Input("update-interval", "n_intervals"),
+    ],
 )
-def updateGraph(value):
+def updateGraph(value, n_intervals):
     user = getLoggedUser()
     cpuData = user.dataFetcher.getCPUData()
 
@@ -146,44 +154,40 @@ def updateGraph(value):
 
 @callback(
     Output("resource-info", "children"),
-    [Input("dropdown-selection", "value")],
+    [
+        Input("dropdown-selection", "value"),
+        Input("update-interval", "n_intervals"),
+    ],
 )
-def updateResourceInfo(value):
+def updateResourceInfo(value, n_intervals):
     user = getLoggedUser()
-    gpuData = user.dataFetcher.getGPUData()
-    cpuData = user.dataFetcher.getCPUData()
 
-    if value is None or value not in gpuData["Partition"].values:
+    if value == "gpu":
+        gpuData = user.dataFetcher.getGPUData()
+        if gpuData.empty:
+            return "No Data Available"
+
+        totalGpuCount = gpuData["Available GPU Count"].sum()
+
+        availableGpuNodes = gpuData["Available GPU Nodes"].tolist()
+        availableGpuNodesStr = ", ".join(availableGpuNodes) if availableGpuNodes else "None"
+
+        return html.Div([
+            html.Div(f"Total GPUs Available: {totalGpuCount}", style={"fontWeight": "bold", "marginBottom": "5px", "color": "#4CAF50"}),
+            html.Div(f"Available GPU Nodes: {availableGpuNodesStr}", style={"fontWeight": "bold", "marginBottom": "5px", "color": "#007ACC"})
+        ])
+
+
+    cpuData = user.dataFetcher.getCPUData()
+    if cpuData.empty or value not in cpuData["PARTITION"].values:
         return "No Data Available"
 
     cpuDff = cpuData[cpuData["PARTITION"] == value].iloc[0]
 
-    totalCpus = cpuDff["CPUS_T"]
-    idleCpus = cpuDff["CPUS_I"]
-    
-    div_content = [
-        html.Div(f"Total CPUs: {totalCpus}", style={"fontWeight": "bold", "marginBottom": "5px"}),
-        html.Div(f"Idle CPUs: {idleCpus}", style={"fontWeight": "bold", "marginBottom": "5px"}),
-    ]
-
-    if value == "gpu":
-        gpuDff = gpuData[gpuData["Partition"] == value].iloc[0]
-
-        gpuCount = gpuDff["Available GPU Count"]
-        gpuNodes = gpuDff["Available GPU Nodes"]
-
-        div_content.extend([
-            html.Div(
-                f"Total GPUs Available: {gpuCount}",
-                style={"fontWeight": "bold", "marginBottom": "5px", "color": "#4CAF50"},
-            ),
-            html.Div(
-                f"Available GPU Nodes: {gpuNodes}",
-                style={"fontWeight": "bold", "marginBottom": "5px", "color": "#007ACC"},
-            ),
-        ])
-
-    return html.Div(div_content)
+    return html.Div([
+        html.Div(f"Total CPUs: {cpuDff['CPUS_T']}", style={"fontWeight": "bold", "marginBottom": "5px"}),
+        html.Div(f"Idle CPUs: {cpuDff['CPUS_I']}", style={"fontWeight": "bold", "marginBottom": "5px"}),
+    ])
 
 
 @callback(

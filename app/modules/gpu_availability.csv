@@ -1,7 +1,0 @@
-Partition,Available GPU Nodes,Available GPU Count
-defq*,"node15, node14",2
-gpu,"node09, node08, node16, node14, node15",5
-shortq,"node15, node14",2
-longq,node14,1
-visu,,0
-special,"node12, node09, node11, node17, node08, node16, node14, node06, node15, node10, node13, node07",12
