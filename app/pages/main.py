@@ -29,7 +29,7 @@ layout = html.Div(
     children=[
         dcc.Interval(
             id="update-interval",
-            interval=2 * 1000,  
+            interval=10 * 1000,  
             n_intervals=0
         ),
         html.Div(
@@ -134,6 +134,7 @@ layout = html.Div(
     ],
 )
 def updateGraph(value, n_intervals):
+    print(value)
     user = getLoggedUser()
     cpuData = user.dataFetcher.getCPUData()
 
